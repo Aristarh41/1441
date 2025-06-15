@@ -21,8 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === popupBox) popupBox.classList.add("hidden");
   });
   
-document.getElementById('sortSelector').addEventListener('change', showNotes);
-  function createNote(title, description, date = null) {
+// document.getElementById('sortSelector').addEventListener('change', showNotes);
+  
+function createNote(title, description, date = null) {
   const note = document.createElement("li");
   note.className = "note";
   const currentDate = date || new Date();
@@ -106,45 +107,161 @@ document.getElementById('sortSelector').addEventListener('change', showNotes);
     popupBox.classList.add("hidden");
   });
 });
-const addBox = document.querySelector(".add-box"),
-  popupBox = document.querySelector(".popup-box"),
-  popupTitle = popupBox.querySelector("header p"),
-  closeIcon = popupBox.querySelector("header i"),
-  titleTag = popupBox.querySelector("input"),
-  descTag = popupBox.querySelector("textarea"),
-  addBtn = popupBox.querySelector("button");
+document.addEventListener("DOMContentLoaded", () => {
+  const addBox = document.querySelector(".add-box");
+  const popupBox = document.querySelector(".popup-box");
+  const addNoteBtn = document.getElementById("add-note-btn");
+  const noteTitle = document.getElementById("note-title");
+  const noteDesc = document.getElementById("note-description");
+  const wrapper = document.querySelector(".wrapper");
 
-const months = ["January", "February", "March", "April", "May", "June", "July",
-  "August", "September", "October", "November", "December"];
-const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  const months = ["January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"];
 
-let isUpdate = false, updateId;
+  let notes = JSON.parse(localStorage.getItem("notes") || "[]");
+  let editingIndex = null;
 
-addBox.addEventListener("click", () => {
-  popupTitle.innerText = "Add a new Note";
-  addBtn.innerText = "Add Note";
-  popupBox.classList.add("show");
-  document.querySelector("body").style.overflow = "hidden";
-  if (window.innerWidth > 660) titleTag.focus();
+  // Функція збереження notes у localStorage
+  function saveNotes() {
+    localStorage.setItem("notes", JSON.stringify(notes));
+  }
+
+  // Функція створення елемента нотатки у DOM
+  function createNoteElement(noteObj, index) {
+    const note = document.createElement("li");
+    note.className = "note";
+    if (noteObj.archived) note.classList.add("archived");
+
+    const noteDate = new Date(noteObj.date);
+    const formattedDate = `${months[noteDate.getMonth()]} ${noteDate.getDate()}, ${noteDate.getFullYear()}`;
+
+    note.innerHTML = `
+      <div class="main_info">
+        <h1>${noteObj.title}</h1>
+        <p>${noteObj.description}</p>
+      </div>
+      <div class="note-footer">${formattedDate}</div>
+      <div class="bottom-content">
+        <div class="settings">
+          <i class="uil uil-ellipsis-h"></i>
+          <ul class="menu">
+            <li class="archive"><i class="uil uil-eye-slash"></i><p>${noteObj.archived ? "Unarchive" : "Archive"}</p></li>
+            <li class="edit"><i class="uil uil-pen"></i><p>Edit</p></li>
+            <li class="delete"><i class="uil uil-trash"></i><p>Delete</p></li>
+          </ul>
+        </div>
+      </div>
+    `;
+
+    // Події для меню налаштувань
+    const settingsIcon = note.querySelector(".uil-ellipsis-h");
+    const menu = note.querySelector(".settings");
+
+    settingsIcon.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".settings").forEach(m => m.classList.remove("show"));
+      menu.classList.toggle("show");
+    });
+
+    // Архівування
+    note.querySelector(".archive").addEventListener("click", () => {
+      notes[index].archived = !notes[index].archived;
+      saveNotes();
+      renderNotes();
+    });
+
+    // Видалення
+    note.querySelector(".delete").addEventListener("click", () => {
+      if (confirm("Delete this note?")) {
+        notes.splice(index, 1);
+        saveNotes();
+        renderNotes();
+      }
+    });
+
+    // Редагування
+    note.querySelector(".edit").addEventListener("click", () => {
+      editingIndex = index;
+      noteTitle.value = notes[index].title;
+      noteDesc.value = notes[index].description;
+      addNoteBtn.textContent = "Save";
+      popupBox.classList.remove("hidden");
+    });
+
+    return note;
+  }
+
+  // Функція рендерингу нотаток
+  function renderNotes() {
+    // Видаляємо всі існуючі нотатки
+    document.querySelectorAll(".note").forEach(n => n.remove());
+
+    notes.forEach((noteObj, idx) => {
+      const noteElem = createNoteElement(noteObj, idx);
+      wrapper.appendChild(noteElem);
+    });
+  }
+
+  // Клік по кнопці додавання нотатки
+  addNoteBtn.addEventListener("click", () => {
+    const title = noteTitle.value.trim();
+    const desc = noteDesc.value.trim();
+
+    if (!title || !desc) {
+      alert("Fill out both fields!");
+      return;
+    }
+
+    const currentDate = new Date().toISOString();
+
+    if (editingIndex !== null) {
+      // Зберігаємо зміни
+      notes[editingIndex].title = title;
+      notes[editingIndex].description = desc;
+      notes[editingIndex].date = currentDate;
+      editingIndex = null;
+      addNoteBtn.textContent = "Add";
+    } else {
+      // Додаємо нову нотатку
+      notes.push({
+        title,
+        description: desc,
+        date: currentDate,
+        archived: false
+      });
+    }
+
+    saveNotes();
+    renderNotes();
+
+    noteTitle.value = "";
+    noteDesc.value = "";
+    popupBox.classList.add("hidden");
+  });
+
+  // Відкриваємо попап додавання нотатки
+  addBox.addEventListener("click", () => {
+    editingIndex = null;
+    addNoteBtn.textContent = "Add";
+    noteTitle.value = "";
+    noteDesc.value = "";
+    popupBox.classList.remove("hidden");
+  });
+
+  // Закриття попапу при кліку поза ним
+  popupBox.addEventListener("click", (e) => {
+    if (e.target === popupBox) popupBox.classList.add("hidden");
+  });
+
+  // Закриваємо меню, якщо клік поза ним
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".settings").forEach(m => m.classList.remove("show"));
+  });
+
+  // Перший рендер нотаток з localStorage
+  renderNotes();
 });
-// function showNotes() {
-//   if (!notes) return;
-//   document.querySelectorAll(".note").forEach(li => li.remove());
-  
 
-//   let sortMode = document.getElementById('sortSelector')?.value || 'activeFirst';
-
-//   let notesToShow = [];
-
-//   if (sortMode === 'activeFirst') {
-//     let activeNotes = notes.filter(n => !n.archived);
-//     let archivedNotes = notes.filter(n => n.archived);
-//     notesToShow = [...activeNotes, ...archivedNotes];
-//   } else if (sortMode === 'archivedFirst') {
-//     let activeNotes = notes.filter(n => !n.archived);
-//     let archivedNotes = notes.filter(n => n.archived);
-//     notesToShow = [...archivedNotes, ...activeNotes];
-//   }};
 
 function showNotes() {
   document.querySelectorAll(".note").forEach(li => li.remove());
@@ -169,6 +286,15 @@ function showNotes() {
     createNote(noteObj.title, noteObj.description, noteDate, noteObj.archived);
   });
 }
+function showNotes() {
+  document.querySelectorAll(".note").forEach(li => li.remove());
+
+  notes.forEach(noteObj => {
+    const noteDate = new Date(noteObj.date || new Date());
+    createNote(noteObj.title, noteObj.description, noteDate, noteObj.archived);
+  });
+}
+
 
 
 settingsIcon.addEventListener("click", (e) => {
@@ -255,8 +381,3 @@ function toggleArchive(noteId) {
 
   return newIndex; 
 }
-
-
-
-
-
