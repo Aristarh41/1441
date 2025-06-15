@@ -20,26 +20,31 @@ document.addEventListener("DOMContentLoaded", () => {
   popupBox.addEventListener("click", (e) => {
     if (e.target === popupBox) popupBox.classList.add("hidden");
   });
+  
+document.getElementById('sortSelector').addEventListener('change', showNotes);
+  function createNote(title, description, date = null) {
+  const note = document.createElement("li");
+  note.className = "note";
+  const currentDate = date || new Date();
+  const formattedDate = `${months[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`;
 
-  function createNote(title, description) {
-    const note = document.createElement("li");
-    note.className = "note";
-    note.innerHTML = `
-      <div class="main_info">
-        <h1>${title}</h1>
-        <p>${description}</p>
+  note.innerHTML = `
+    <div class="main_info">
+      <h1>${title}</h1>
+      <p>${description}</p>
+    </div>
+    <div class="note-footer">${formattedDate}</div>
+    <div class="bottom-content">
+      <div class="settings">
+        <i class="uil uil-ellipsis-h"></i>
+        <ul class="menu">
+          <li class="archive"><i class="uil uil-eye-slash"></i><p>Archive</p></li>
+          <li class="edit"><i class="uil uil-pen"></i><p>Edit</p></li>
+          <li class="delete"><i class="uil uil-trash"></i><p>Delete</p></li>
+        </ul>
       </div>
-      <div class="bottom-content">
-        <div class="settings">
-          <i class="uil uil-ellipsis-h"></i>
-          <ul class="menu">
-            <li class="archive"><i class="uil uil-eye-slash"></i><p>Archive</p></li>
-            <li class="edit"><i class="uil uil-pen"></i><p>Edit</p></li>
-            <li class="delete"><i class="uil uil-trash"></i><p>Delete</p></li>
-          </ul>
-        </div>
-      </div>
-    `;
+    </div>
+  `;
 
     addNoteEventListeners(note);
     wrapper.appendChild(note);
@@ -101,12 +106,156 @@ document.addEventListener("DOMContentLoaded", () => {
     popupBox.classList.add("hidden");
   });
 });
+const addBox = document.querySelector(".add-box"),
+  popupBox = document.querySelector(".popup-box"),
+  popupTitle = popupBox.querySelector("header p"),
+  closeIcon = popupBox.querySelector("header i"),
+  titleTag = popupBox.querySelector("input"),
+  descTag = popupBox.querySelector("textarea"),
+  addBtn = popupBox.querySelector("button");
+
+const months = ["January", "February", "March", "April", "May", "June", "July",
+  "August", "September", "October", "November", "December"];
+const notes = JSON.parse(localStorage.getItem("notes") || "[]");
+
+let isUpdate = false, updateId;
+
+addBox.addEventListener("click", () => {
+  popupTitle.innerText = "Add a new Note";
+  addBtn.innerText = "Add Note";
+  popupBox.classList.add("show");
+  document.querySelector("body").style.overflow = "hidden";
+  if (window.innerWidth > 660) titleTag.focus();
+});
+// function showNotes() {
+//   if (!notes) return;
+//   document.querySelectorAll(".note").forEach(li => li.remove());
+  
+
+//   let sortMode = document.getElementById('sortSelector')?.value || 'activeFirst';
+
+//   let notesToShow = [];
+
+//   if (sortMode === 'activeFirst') {
+//     let activeNotes = notes.filter(n => !n.archived);
+//     let archivedNotes = notes.filter(n => n.archived);
+//     notesToShow = [...activeNotes, ...archivedNotes];
+//   } else if (sortMode === 'archivedFirst') {
+//     let activeNotes = notes.filter(n => !n.archived);
+//     let archivedNotes = notes.filter(n => n.archived);
+//     notesToShow = [...archivedNotes, ...activeNotes];
+//   }};
+
+function showNotes() {
+  document.querySelectorAll(".note").forEach(li => li.remove());
+
+  let sortMode = document.getElementById('sortSelector')?.value || 'activeFirst';
+  let notesToShow = [];
+
+  if (sortMode === 'activeFirst') {
+    let activeNotes = notes.filter(n => !n.archived);
+    let archivedNotes = notes.filter(n => n.archived);
+    notesToShow = [...activeNotes, ...archivedNotes];
+  } else if (sortMode === 'archivedFirst') {
+    let activeNotes = notes.filter(n => !n.archived);
+    let archivedNotes = notes.filter(n => n.archived);
+    notesToShow = [...archivedNotes, ...activeNotes];
+  } else {
+    notesToShow = [...notes];
+  }
+
+  notesToShow.forEach(noteObj => {
+    const noteDate = new Date(noteObj.date || new Date());
+    createNote(noteObj.title, noteObj.description, noteDate, noteObj.archived);
+  });
+}
+
 
 settingsIcon.addEventListener("click", (e) => {
   e.stopPropagation();
   document.querySelectorAll(".settings").forEach(m => m.classList.remove("show"));
   menu.classList.toggle("show");
 });
+showNotes();
+// notesToShow.forEach((noteObj, index) => {
+//   const noteDate = new Date(noteObj.date || new Date());
+//   createNote(noteObj.title, noteObj.description, noteDate);
+// });
+function showMenu(elem) {
+  elem.parentElement.classList.add("show");
+  document.addEventListener("click", e => {
+    if (e.target.tagName != "I" || e.target != elem) {
+      elem.parentElement.classList.remove("show");
+    }
+  });
+}
+
+function deleteNote(noteId) {
+  let confirmDel = confirm("Are you sure you want to delete this note?");
+  if (!confirmDel) return;
+  notes.splice(noteId, 1);
+  localStorage.setItem("notes", JSON.stringify(notes));
+  showNotes();
+}
+
+function updateNote(noteId, title, filterDesc) {
+  let description = filterDesc.replaceAll('<br/>', '\r\n');
+  updateId = noteId;
+  isUpdate = true;
+  addBox.click();
+  titleTag.value = title;
+  descTag.value = description;
+  popupTitle.innerText = "Update a Note";
+  addBtn.innerText = "Update Note";
+}
+
+addBtn.addEventListener("click", e => {
+  e.preventDefault();
+  let title = titleTag.value.trim(),
+    description = descTag.value.trim();
+  if (title || description) {
+    let currentDate = new Date(),
+      month = months[currentDate.getMonth()],
+      day = currentDate.getDate(),
+      year = currentDate.getFullYear();
+    let noteInfo = { title, description, date: `${month} ${day}, ${year}` }
+    if (!isUpdate) {
+      notes.push(noteInfo);
+    } else {
+      isUpdate = false;
+      notes[updateId] = noteInfo;
+    }
+    localStorage.setItem("notes", JSON.stringify(notes));
+    showNotes();
+    closeIcon.click();
+  }
+});
+function toggleArchive(noteId) {
+  // Перемикаємо архівований стан
+  notes[noteId].archived = !notes[noteId].archived;
+
+  // Вирізаємо запис з масиву
+  let movedNote = notes.splice(noteId, 1)[0];
+
+  let newIndex;
+
+  if (movedNote.archived) {
+    notes.unshift(movedNote);
+    newIndex = 0; 
+  } else {
+    notes.push(movedNote);
+    newIndex = notes.length - 1; 
+  }
+
+  showNotes();
+  localStorage.setItem("notes", JSON.stringify(notes));
+
+  console.log("Новий індекс запису:", newIndex);
+  console.log(notes);
+
+  return newIndex; 
+}
+
 
 
 
