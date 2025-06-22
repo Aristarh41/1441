@@ -297,16 +297,12 @@ function showNotes() {
 
 
 
-settingsIcon.addEventListener("click", (e) => {
-  e.stopPropagation();
-  document.querySelectorAll(".settings").forEach(m => m.classList.remove("show"));
-  menu.classList.toggle("show");
-});
-showNotes();
-// notesToShow.forEach((noteObj, index) => {
-//   const noteDate = new Date(noteObj.date || new Date());
-//   createNote(noteObj.title, noteObj.description, noteDate);
+// settingsIcon.addEventListener("click", (e) => {
+//   e.stopPropagation();
+//   document.querySelectorAll(".settings").forEach(m => m.classList.remove("show"));
+//   menu.classList.toggle("show");
 // });
+showNotes();
 function showMenu(elem) {
   elem.parentElement.classList.add("show");
   document.addEventListener("click", e => {
